@@ -1049,14 +1049,14 @@
             async deleteQuestion(id) {
                 if (!confirm('Tem certeza que deseja excluir esta questão?')) return;
 
-                this.system.questions = this.system.questions.filter(q => q.id !== id);
+                this.system.questions = this.system.questions.filter(q => q.id != id && q.id !== id);
                 await this.system.saveQuestions();
                 // Atualizar lista filtrada e reexibir
                 this.filterQuestions();
                 this.system.showNotification('Questão excluída com sucesso!');
             }
             editQuestion(id) {
-                const question = this.system.questions.find(q => q.id === id);
+                const question = this.system.questions.find(q => q.id == id || q.id === id);
                 if (!question) return;
 
                 // Marcar que está editando
@@ -1124,7 +1124,8 @@
                         importedQuestions.forEach(question => {
                             this.system.questions.push({
                                 ...question,
-                                id: Date.now() + Math.random()
+                                id: Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+                                isDefault: false // Garantir que questões importadas não sejam marcadas como padrão
                             });
                         });
 
@@ -1176,12 +1177,12 @@
                         ${index + 1 === question.correctAnswer ? ' ✓' : ''}
                     </li>`
                     ).join('')}
-            </ul>
-            <div class="question-actions">
-                <button class="btn-edit" onclick="manager.editQuestion('${question.id}')">✏️ Editar</button>
-                <button class="btn-danger" onclick="manager.deleteQuestion('${question.id}')">🗑️ Excluir</button>
-            </div>
-        `;
+                        </ul>
+                        <div class="question-actions">
+                            <button class="btn-edit" onclick="manager.editQuestion(\`${question.id}\`)">✏️ Editar</button>
+                            <button class="btn-danger" onclick="manager.deleteQuestion(\`${question.id}\`)">🗑️ Excluir</button>
+                        </div>
+                    `;
                     container.appendChild(questionDiv);
                 }
 
