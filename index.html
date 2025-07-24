@@ -471,6 +471,40 @@
             color: #2c3e50;
         }
 
+        .question-category {
+    background: #3498db;
+    color: white;
+    padding: 5px 10px;
+    border-radius: 15px;
+    font-size: 12px;
+    font-weight: bold;
+    display: inline-block;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.question-category:hover {
+    background: #2980b9;
+}
+
+/* Estilo para questões sem categoria */
+.question-category.no-category {
+    background: #95a5a6;
+}
+
+/* Textarea com dica visual */
+#questionInput {
+    font-family: 'Courier New', monospace;
+    line-height: 1.4;
+}
+
+/* Placeholder melhorado */
+#questionInput::placeholder {
+    color: #7f8c8d;
+    font-style: italic;
+}
+
         @keyframes fadeInUp {
             from {
                 opacity: 0;
@@ -608,7 +642,7 @@
             <div class="input-section">
                 <h2>📝 Adicionar Nova Questão</h2>
                 <textarea id="questionInput"
-                    placeholder="Cole sua questão aqui seguindo o formato:&#10;&#10;Pergunta?&#10;Opção 1&#10;Opção 2&#10;Opção 3&#10;Opção 4&#10;&#10;2 (número da resposta correta)"></textarea>
+                    placeholder="Cole sua questão aqui seguindo o formato:&#10;&#10;Categoria&#10;Pergunta?&#10;Opção 1&#10;Opção 2&#10;Opção 3&#10;Opção 4&#10;&#10;2 ou a (número ou letra da resposta correta)"></textarea>
 
                 <div class="buttons">
                     <button class="btn-primary" onclick="manager.addQuestion()">➕ Adicionar Questão</button>
@@ -1004,84 +1038,94 @@
             }
 
             parseQuestionText(text) {
-                const lines = text.trim().split('\n').map(line => line.trim()).filter(line => line.length > 0);
+    const lines = text.trim().split('\n').map(line => line.trim()).filter(line => line.length > 0);
 
-                if (lines.length < 4) { // Agora precisa de pelo menos 4 linhas: categoria + pergunta + opção + resposta
-                    throw new Error('Formato inválido. Precisa ter: Categoria, Pergunta, pelo menos uma opção e a resposta correta.');
-                }
+    if (lines.length < 4) {
+        throw new Error('Formato inválido. Precisa ter: Categoria, Pergunta, pelo menos uma opção e a resposta correta.');
+    }
 
-                const category = lines[0]; // Primeira linha é sempre a categoria
-                const question = lines[1]; // Segunda linha é a pergunta
-                const lastLine = lines[lines.length - 1];
-                const options = lines.slice(2, -1); // Opções ficam entre a pergunta e resposta
+    const category = lines[0] || 'Sem Categoria'; // Categoria padrão se vazia
+    const question = lines[1];
+    const lastLine = lines[lines.length - 1];
+    const options = lines.slice(2, -1);
 
-                let correctAnswer;
-                if (isNaN(lastLine)) {
-                    const letterToNumber = { 'a': 1, 'b': 2, 'c': 3, 'd': 4, 'e': 5, 'f': 6 };
-                    correctAnswer = letterToNumber[lastLine.toLowerCase()] || 1;
-                } else {
-                    correctAnswer = parseInt(lastLine);
-                }
+    // Validação básica
+    if (!question || question.length < 5) {
+        throw new Error('A pergunta deve ter pelo menos 5 caracteres.');
+    }
 
-                return {
-                    category, // NOVA propriedade
-                    question,
-                    options,
-                    correctAnswer: Math.max(1, Math.min(correctAnswer, options.length))
-                };
-            }
+    if (options.length < 2) {
+        throw new Error('Deve haver pelo menos 2 alternativas.');
+    }
+
+    let correctAnswer;
+    if (isNaN(lastLine)) {
+        const letterToNumber = { 'a': 1, 'b': 2, 'c': 3, 'd': 4, 'e': 5, 'f': 6 };
+        correctAnswer = letterToNumber[lastLine.toLowerCase()] || 1;
+    } else {
+        correctAnswer = parseInt(lastLine);
+    }
+
+    return {
+        category,
+        question,
+        options,
+        correctAnswer: Math.max(1, Math.min(correctAnswer, options.length))
+    };
+}
 
             async addQuestion() {
-                const input = document.getElementById('questionInput');
-                const text = input.value.trim();
+    const input = document.getElementById('questionInput');
+    const text = input.value.trim();
 
-                if (!text) {
-                    this.system.showNotification('Por favor, insira uma questão.', 'error');
-                    return;
-                }
+    if (!text) {
+        this.system.showNotification('Por favor, insira uma questão.', 'error');
+        return;
+    }
 
-                try {
-                    const parsed = this.parseQuestionText(text);
+    try {
+        const parsed = this.parseQuestionText(text);
 
-                    if (this.system.editingQuestionId) {
-                        // Editando questão existente
-                        const questionIndex = this.system.questions.findIndex(q => q.id === this.system.editingQuestionId);
-                        if (questionIndex !== -1) {
-                            this.system.questions[questionIndex] = {
-                                ...this.system.questions[questionIndex],
-                                category: parsed.category,
-                                text: parsed.question,
-                                options: parsed.options,
-                                correctAnswer: parsed.correctAnswer
-                            };
-                            this.system.showNotification('Questão atualizada com sucesso!');
-                        }
-                        this.system.editingQuestionId = null;
-                    } else {
-                        // Adicionando nova questão
-                        const questionObj = {
-                            id: Date.now() + '_' + Math.random().toString(36).substr(2, 9),
-                            category: parsed.category,
-                            text: parsed.question,
-                            options: parsed.options,
-                            correctAnswer: parsed.correctAnswer,
-                            createdAt: new Date().toISOString(),
-                            isDefault: false
-                        };
-                        this.system.questions.push(questionObj);
-                        this.system.showNotification('Questão adicionada com sucesso!');
-                    }
-
-                    await this.system.saveQuestions();
-                    input.value = '';
-                    this.resetAddButton();
-                    // Atualizar lista filtrada e reexibir
-                    this.filterQuestions();
-
-                } catch (error) {
-                    this.system.showNotification('Erro: ' + error.message, 'error');
-                }
+        if (this.system.editingQuestionId) {
+            // Editando questão existente
+            const questionIndex = this.system.questions.findIndex(q => q.id === this.system.editingQuestionId);
+            if (questionIndex !== -1) {
+                // Manter dados originais e atualizar apenas os campos editados
+                this.system.questions[questionIndex] = {
+                    ...this.system.questions[questionIndex], // Manter id, createdAt, isDefault, etc.
+                    category: parsed.category,
+                    text: parsed.question,
+                    options: parsed.options,
+                    correctAnswer: parsed.correctAnswer
+                };
+                this.system.showNotification('Questão atualizada com sucesso!');
             }
+            this.system.editingQuestionId = null;
+        } else {
+            // Adicionando nova questão
+            const questionObj = {
+                id: Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+                category: parsed.category,
+                text: parsed.question,
+                options: parsed.options,
+                correctAnswer: parsed.correctAnswer,
+                createdAt: new Date().toISOString(),
+                isDefault: false
+            };
+            this.system.questions.push(questionObj);
+            this.system.showNotification('Questão adicionada com sucesso!');
+        }
+
+        await this.system.saveQuestions();
+        input.value = '';
+        this.resetAddButton();
+        // Atualizar lista filtrada e reexibir
+        this.filterQuestions();
+
+    } catch (error) {
+        this.system.showNotification('Erro: ' + error.message, 'error');
+    }
+}
 
             resetAddButton() {
                 const addButton = document.querySelector('button[onclick="manager.addQuestion()"]');
@@ -1146,25 +1190,31 @@
                 this.filterQuestions();
                 this.system.showNotification('Questão excluída com sucesso!');
             }
-            editQuestion(id) {
-                const question = this.system.questions.find(q => q.id == id || q.id === id);
-                if (!question) return;
+editQuestion(id) {
+    const question = this.system.questions.find(q => q.id == id || q.id === id);
+    if (!question) return;
 
-                // Marcar que está editando
-                this.system.editingQuestionId = id;
+    // Marcar que está editando
+    this.system.editingQuestionId = id;
 
-                const questionText = `${question.text}\n${question.options.join('\n')}\n${question.correctAnswer}`;
-                document.getElementById('questionInput').value = questionText;
+    // NOVA FORMATAÇÃO: Incluir categoria na primeira linha
+    const questionText = `${question.category || 'Sem Categoria'}
+${question.text}
+${question.options.join('\n')}
+${question.correctAnswer}`;
 
-                // Mudar texto do botão para indicar edição
-                const addButton = document.querySelector('button[onclick="manager.addQuestion()"]');
-                if (addButton) {
-                    addButton.textContent = '✏️ Atualizar Questão';
-                    addButton.style.backgroundColor = '#f39c12';
-                }
+    document.getElementById('questionInput').value = questionText;
 
-                this.system.showNotification('Questão carregada para edição! Clique em "Atualizar Questão" para salvar.', 'info');
-            }
+    // Mudar texto do botão para indicar edição
+    const addButton = document.querySelector('button[onclick="manager.addQuestion()"]');
+    if (addButton) {
+        addButton.textContent = '✏️ Atualizar Questão';
+        addButton.style.backgroundColor = '#f39c12';
+    }
+
+    // Mostrar notificação explicativa
+    this.system.showNotification('Questão carregada para edição! Você pode editar a categoria, pergunta, alternativas e resposta. Clique em "Atualizar Questão" para salvar.', 'info');
+}
 
             async clearAllQuestions() {
                 if (!confirm('Tem certeza que deseja excluir TODAS as questões?')) return;
