@@ -299,6 +299,11 @@
             background: #dc3545;
         }
 
+        .notification.info {
+            background-color: #3498db;
+            /* Azul */
+        }
+
         .hidden {
             display: none !important;
         }
@@ -434,6 +439,38 @@
             animation: fadeInUp 0.3s ease;
         }
 
+        .question-category {
+            background: #3498db;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: bold;
+            display: inline-block;
+            margin-bottom: 10px;
+        }
+
+        .filter-section {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+        }
+
+        .quiz-category-section {
+            background: #e8f4f8;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #b8daff;
+            text-align: center;
+        }
+
+        .filter-section label,
+        .quiz-category-section label {
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
         @keyframes fadeInUp {
             from {
                 opacity: 0;
@@ -520,7 +557,16 @@
                     <h3>📊 Estatísticas</h3>
                     <p>Total de questões disponíveis: <span id="totalQuestionsQuiz">0</span></p>
                 </div>
-                <button class="btn-primary" onclick="quiz.start()">🚀 Iniciar Quiz</button>
+                <div class="quiz-category-section" style="margin-bottom: 20px;">
+                    <label for="quizCategoryFilter">🎯 Escolha a Categoria do Quiz:</label>
+                    <select id="quizCategoryFilter"
+                        style="padding: 8px; margin-left: 10px; border-radius: 5px; border: 1px solid #ddd; width: 200px;">
+                        <option value="todas">🎯 Todas as Categorias</option>
+                    </select>
+                </div>
+                <button class="btn-primary"
+                    onclick="quiz.startByCategory(document.getElementById('quizCategoryFilter').value)">🚀 Iniciar
+                    Quiz</button>
             </div>
 
             <div id="quiz-game" class="hidden">
@@ -580,6 +626,13 @@
 
             <div class="questions-list">
                 <h2>📋 Questões Salvas</h2>
+                <div class="filter-section" style="margin-bottom: 20px;">
+                    <label for="categoryFilter">🔍 Filtrar por Categoria:</label>
+                    <select id="categoryFilter" onchange="manager.filterByCategory(this.value)"
+                        style="padding: 8px; margin-left: 10px; border-radius: 5px; border: 1px solid #ddd;">
+                        <option value="todas">📂 Todas as Categorias</option>
+                    </select>
+                </div>
                 <div class="search-container">
                     <div class="search-input-wrapper">
                         <input type="text" id="searchInput" placeholder="🔍 Pesquisar questões..." autocomplete="off">
@@ -724,6 +777,7 @@
                 this.questions = [
                     {
                         id: 'default_1',
+                        category: 'Procedimentos Básicos', // NOVA propriedade
                         text: 'Antes de ligar o carro, o que você deve fazer primeiro?',
                         options: [
                             'Colocar a ré',
@@ -737,6 +791,7 @@
                     },
                     {
                         id: 'default_2',
+                        category: 'Velocidade e Limites', // NOVA propriedade
                         text: 'Qual é a velocidade máxima permitida em vias urbanas?',
                         options: [
                             '40 km/h',
@@ -750,6 +805,7 @@
                     },
                     {
                         id: 'default_3',
+                        category: 'Sinalização', // NOVA propriedade
                         text: 'O que significa a placa de trânsito triangular vermelha?',
                         options: [
                             'Proibição',
@@ -950,13 +1006,14 @@
             parseQuestionText(text) {
                 const lines = text.trim().split('\n').map(line => line.trim()).filter(line => line.length > 0);
 
-                if (lines.length < 3) {
-                    throw new Error('Formato inválido. Precisa ter pelo menos a pergunta, uma opção e a resposta correta.');
+                if (lines.length < 4) { // Agora precisa de pelo menos 4 linhas: categoria + pergunta + opção + resposta
+                    throw new Error('Formato inválido. Precisa ter: Categoria, Pergunta, pelo menos uma opção e a resposta correta.');
                 }
 
-                const question = lines[0];
+                const category = lines[0]; // Primeira linha é sempre a categoria
+                const question = lines[1]; // Segunda linha é a pergunta
                 const lastLine = lines[lines.length - 1];
-                const options = lines.slice(1, -1);
+                const options = lines.slice(2, -1); // Opções ficam entre a pergunta e resposta
 
                 let correctAnswer;
                 if (isNaN(lastLine)) {
@@ -967,6 +1024,7 @@
                 }
 
                 return {
+                    category, // NOVA propriedade
                     question,
                     options,
                     correctAnswer: Math.max(1, Math.min(correctAnswer, options.length))
@@ -991,6 +1049,7 @@
                         if (questionIndex !== -1) {
                             this.system.questions[questionIndex] = {
                                 ...this.system.questions[questionIndex],
+                                category: parsed.category,
                                 text: parsed.question,
                                 options: parsed.options,
                                 correctAnswer: parsed.correctAnswer
@@ -1002,6 +1061,7 @@
                         // Adicionando nova questão
                         const questionObj = {
                             id: Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+                            category: parsed.category,
                             text: parsed.question,
                             options: parsed.options,
                             correctAnswer: parsed.correctAnswer,
@@ -1044,6 +1104,37 @@
                 }
 
                 this.updateSearchStats();
+                this.updateCategoryDropdown();
+            }
+            getCategories() {
+                const categories = [...new Set(this.system.questions.map(q => q.category))];
+                return categories.sort();
+            }
+
+            filterByCategory(category) {
+                if (!category || category === 'todas') {
+                    this.filteredQuestions = [...this.system.questions];
+                } else {
+                    this.filteredQuestions = this.system.questions.filter(q => q.category === category);
+                }
+                this.currentPage = 0;
+                this.displayQuestionsVirtual();
+                this.updateSearchStats();
+            }
+
+            updateCategoryDropdown() {
+                const categorySelect = document.getElementById('categoryFilter');
+                if (!categorySelect) return;
+
+                const categories = this.getCategories();
+                categorySelect.innerHTML = '<option value="todas">📂 Todas as Categorias</option>';
+
+                categories.forEach(category => {
+                    const option = document.createElement('option');
+                    option.value = category;
+                    option.textContent = `📁 ${category}`;
+                    categorySelect.appendChild(option);
+                });
             }
 
             async deleteQuestion(id) {
@@ -1169,7 +1260,8 @@
                     questionDiv.className = 'question-item';
                     questionDiv.setAttribute('data-question-id', question.id);
                     questionDiv.innerHTML = `
-            <div class="question-text">${this.highlightSearchTerm(question.text)}</div>
+            <div class="question-category">📁 ${question.category}</div>
+<div class="question-text">${this.highlightSearchTerm(question.text)}</div>
             <ul class="options">
                 ${question.options.map((option, index) =>
                         `<li class="${index + 1 === question.correctAnswer ? 'correct' : ''}">
@@ -1264,6 +1356,7 @@
             }
 
             start() {
+                this.updateQuizCategoryDropdown();
                 if (this.system.questions.length === 0) {
                     this.system.showNotification('Nenhuma questão disponível! Adicione questões primeiro.', 'error');
                     return;
@@ -1284,6 +1377,57 @@
 
                 this.updateHeader();
                 this.showQuestion();
+            }
+
+            startByCategory(category) {
+                let questionsToUse;
+
+                if (!category || category === 'todas') {
+                    questionsToUse = this.system.questions;
+                } else {
+                    questionsToUse = this.system.questions.filter(q => q.category === category);
+                }
+
+                if (questionsToUse.length === 0) {
+                    this.system.showNotification(`Nenhuma questão encontrada na categoria "${category}"!`, 'error');
+                    return;
+                }
+
+                this.quizQuestions = this.system.shuffleArray(questionsToUse);
+                this.quizQuestions = this.quizQuestions.map(question => ({
+                    ...question,
+                    options: [...question.options]
+                }));
+
+                this.currentQuestionIndex = 0;
+                this.score = 0;
+
+                document.getElementById('quiz-start').classList.add('hidden');
+                document.getElementById('quiz-game').classList.remove('hidden');
+                document.getElementById('quiz-result').classList.add('hidden');
+
+                this.updateHeader();
+                this.showQuestion();
+            }
+
+            getQuizCategories() {
+                const categories = [...new Set(this.system.questions.map(q => q.category))];
+                return categories.sort();
+            }
+
+            updateQuizCategoryDropdown() {
+                const categorySelect = document.getElementById('quizCategoryFilter');
+                if (!categorySelect) return;
+
+                const categories = this.getQuizCategories();
+                categorySelect.innerHTML = '<option value="todas">🎯 Todas as Categorias</option>';
+
+                categories.forEach(category => {
+                    const option = document.createElement('option');
+                    option.value = category;
+                    option.textContent = `🎯 ${category}`;
+                    categorySelect.appendChild(option);
+                });
             }
 
             showQuestion() {
@@ -1400,6 +1544,7 @@
         setTimeout(() => {
             if (system.questions.length > 0) {
                 manager.displayQuestions();
+                quiz.updateQuizCategoryDropdown();
             }
         }, 1000);
     </script>
