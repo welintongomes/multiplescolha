@@ -1285,52 +1285,57 @@ ${question.correctAnswer}`;
                 document.getElementById('questionInput').value = '';
             }
             displayQuestionsVirtual() {
-                const container = document.getElementById('questionsList');
-                const startIndex = this.currentPage * this.itemsPerPage;
-                const endIndex = Math.min(startIndex + this.itemsPerPage, this.filteredQuestions.length);
+    const container = document.getElementById('questionsList');
+    
+    // Inverter a ordem das perguntas
+    const reversedQuestions = [...this.filteredQuestions].reverse(); // <- aqui inverte
 
-                // Se é a primeira página, limpar container
-                if (this.currentPage === 0) {
-                    container.innerHTML = '';
-                }
+    const startIndex = this.currentPage * this.itemsPerPage;
+    const endIndex = Math.min(startIndex + this.itemsPerPage, reversedQuestions.length);
 
-                // Mostrar indicador de carregamento
-                if (this.isLoading) {
-                    const loadingDiv = document.createElement('div');
-                    loadingDiv.className = 'loading-indicator';
-                    loadingDiv.innerHTML = '⏳ Carregando mais questões...';
-                    container.appendChild(loadingDiv);
-                    return;
-                }
+    // Se é a primeira página, limpar container
+    if (this.currentPage === 0) {
+        container.innerHTML = '';
+    }
 
-                // Adicionar questões da página atual
-                for (let i = startIndex; i < endIndex; i++) {
-                    const question = this.filteredQuestions[i];
-                    const questionDiv = document.createElement('div');
-                    questionDiv.className = 'question-item';
-                    questionDiv.setAttribute('data-question-id', question.id);
-                    questionDiv.innerHTML = `
+    // Mostrar indicador de carregamento
+    if (this.isLoading) {
+        const loadingDiv = document.createElement('div');
+        loadingDiv.className = 'loading-indicator';
+        loadingDiv.innerHTML = '⏳ Carregando mais questões...';
+        container.appendChild(loadingDiv);
+        return;
+    }
+
+    // Adicionar questões da página atual
+    for (let i = startIndex; i < endIndex; i++) {
+        const question = reversedQuestions[i];
+        const questionDiv = document.createElement('div');
+        questionDiv.className = 'question-item';
+        questionDiv.setAttribute('data-question-id', question.id);
+        questionDiv.innerHTML = `
             <div class="question-category">📁 ${question.category}</div>
-<div class="question-text">${this.highlightSearchTerm(question.text)}</div>
+            <div class="question-text">${this.highlightSearchTerm(question.text)}</div>
             <ul class="options">
                 ${question.options.map((option, index) =>
-                        `<li class="${index + 1 === question.correctAnswer ? 'correct' : ''}">
+                    `<li class="${index + 1 === question.correctAnswer ? 'correct' : ''}">
                         ${String.fromCharCode(65 + index)}. ${this.highlightSearchTerm(option)}
                         ${index + 1 === question.correctAnswer ? ' ✓' : ''}
                     </li>`
-                    ).join('')}
-                        </ul>
-                        <div class="question-actions">
-                            <button class="btn-edit" onclick="manager.editQuestion(\`${question.id}\`)">✏️ Editar</button>
-                            <button class="btn-danger" onclick="manager.deleteQuestion(\`${question.id}\`)">🗑️ Excluir</button>
-                        </div>
-                    `;
-                    container.appendChild(questionDiv);
-                }
+                ).join('')}
+            </ul>
+            <div class="question-actions">
+                <button class="btn-edit" onclick="manager.editQuestion(\`${question.id}\`)">✏️ Editar</button>
+                <button class="btn-danger" onclick="manager.deleteQuestion(\`${question.id}\`)">🗑️ Excluir</button>
+            </div>
+        `;
+        container.appendChild(questionDiv);
+    }
 
-                // Mostrar indicador se há mais questões
-                this.updateLoadMoreIndicator();
-            }
+    // Mostrar indicador se há mais questões
+    this.updateLoadMoreIndicator();
+}
+
 
             highlightSearchTerm(text) {
                 if (!this.searchTerm) return text;
