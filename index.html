@@ -476,6 +476,7 @@
             border: 1px solid #e9ecef;
             flex-direction: row;
             align-items: center;
+            justify-content: space-between;
         }
 
         .quiz-category-section {
@@ -985,52 +986,6 @@
                     [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
                 }
                 return shuffled;
-            }
-
-            initializeDefaultQuestions() {
-                // Perguntas padrão que ficam sempre disponíveis
-                this.defaultQuestions = [
-                    {
-                        id: 'default_1',
-                        text: 'Antes de ligar o carro, o que você deve fazer primeiro?',
-                        options: [
-                            'Colocar a ré',
-                            'Ajustar os retrovisores e o banco, e colocar o cinto',
-                            'Ligar o pisca-alerta',
-                            'Abaixar o freio de mão'
-                        ],
-                        correctAnswer: 2,
-                        createdAt: new Date().toISOString(),
-                        isDefault: true
-                    },
-                    {
-                        id: 'default_2',
-                        text: 'Qual é a velocidade máxima permitida em vias urbanas?',
-                        options: [
-                            '40 km/h',
-                            '50 km/h',
-                            '60 km/h',
-                            '70 km/h'
-                        ],
-                        correctAnswer: 3,
-                        createdAt: new Date().toISOString(),
-                        isDefault: true
-                    },
-                    {
-                        id: 'default_3',
-                        text: 'O que significa a placa de trânsito triangular vermelha?',
-                        options: [
-                            'Proibição',
-                            'Advertência',
-                            'Parada obrigatória',
-                            'Regulamentação'
-                        ],
-                        correctAnswer: 3,
-                        createdAt: new Date().toISOString(),
-                        isDefault: true
-                    }
-                    // Adicione mais perguntas padrão aqui conforme necessário
-                ];
             }
         }
 
@@ -1625,31 +1580,30 @@ ${question.correctAnswer}`;
                 }
 
                 this.isReading = true;
+                // Inverte uma cópia do array e salva para leitura
+                this.questionsToRead = this.filteredQuestions.slice().reverse();
                 this.currentReadingIndex = 0;
                 this.updateReadButton();
                 this.readNextQuestion();
             }
 
+
             readNextQuestion() {
-                if (!this.isReading || this.currentReadingIndex >= this.filteredQuestions.length) {
+                if (!this.isReading || this.currentReadingIndex >= this.questionsToRead.length) {
                     this.stopReading();
                     return;
                 }
 
-                const question = this.filteredQuestions[this.currentReadingIndex];
+                const question = this.questionsToRead[this.currentReadingIndex];
                 const correctIndex = question.correctAnswer - 1;
                 const correctAnswer = question.options[correctIndex];
 
-                // Ler pergunta
                 const questionText = `Pergunta: ${question.text}`;
                 this.speak(questionText, () => {
-                    // Pausa de 2 segundos
                     setTimeout(() => {
                         if (this.isReading) {
-                            // Ler resposta correta
                             const answerText = `Resposta correta: ${correctAnswer}`;
                             this.speak(answerText, () => {
-                                // Pausa de 1 segundo antes da próxima
                                 setTimeout(() => {
                                     if (this.isReading) {
                                         this.currentReadingIndex++;
@@ -1661,6 +1615,7 @@ ${question.correctAnswer}`;
                     }, 2000);
                 });
             }
+
 
             speak(text, callback) {
                 if (!this.isReading) return;
