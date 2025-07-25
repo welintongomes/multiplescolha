@@ -476,6 +476,7 @@
             border: 1px solid #e9ecef;
             flex-direction: row;
             align-items: center;
+            justify-content: space-between;
         }
 
         .quiz-category-section {
@@ -985,52 +986,6 @@
                     [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
                 }
                 return shuffled;
-            }
-
-            initializeDefaultQuestions() {
-                // Perguntas padrão que ficam sempre disponíveis
-                this.defaultQuestions = [
-                    {
-                        id: 'default_1',
-                        text: 'Antes de ligar o carro, o que você deve fazer primeiro?',
-                        options: [
-                            'Colocar a ré',
-                            'Ajustar os retrovisores e o banco, e colocar o cinto',
-                            'Ligar o pisca-alerta',
-                            'Abaixar o freio de mão'
-                        ],
-                        correctAnswer: 2,
-                        createdAt: new Date().toISOString(),
-                        isDefault: true
-                    },
-                    {
-                        id: 'default_2',
-                        text: 'Qual é a velocidade máxima permitida em vias urbanas?',
-                        options: [
-                            '40 km/h',
-                            '50 km/h',
-                            '60 km/h',
-                            '70 km/h'
-                        ],
-                        correctAnswer: 3,
-                        createdAt: new Date().toISOString(),
-                        isDefault: true
-                    },
-                    {
-                        id: 'default_3',
-                        text: 'O que significa a placa de trânsito triangular vermelha?',
-                        options: [
-                            'Proibição',
-                            'Advertência',
-                            'Parada obrigatória',
-                            'Regulamentação'
-                        ],
-                        correctAnswer: 3,
-                        createdAt: new Date().toISOString(),
-                        isDefault: true
-                    }
-                    // Adicione mais perguntas padrão aqui conforme necessário
-                ];
             }
         }
 
