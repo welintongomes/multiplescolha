@@ -218,7 +218,7 @@
         }
 
         .btn-primary {
-            margin-top: 12px;
+            margin-top: 0px;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
         }
@@ -553,6 +553,11 @@
             gap: 10px;
         }
 
+        #readQuestionsBtn {
+            margin-top: 5px;
+            color: #b07723fc;
+        }
+
         @keyframes fadeInUp {
             from {
                 opacity: 0;
@@ -710,7 +715,7 @@
                 <h2>📝 Adicionar Nova Questão</h2>
                 <textarea id="questionInput"
                     placeholder="Cole sua questão aqui seguindo o formato:&#10;&#10;Categoria&#10;Pergunta?&#10;Opção 1&#10;Opção 2&#10;Opção 3&#10;Opção 4&#10;&#10;2 ou a (número ou letra da resposta correta)"></textarea>
-
+                <button id="microphoneBtn" onclick="manager.toggleRecording()" title="Gravar por voz">🎤</button>
                 <div class="buttons">
                     <button class="btn-primary" onclick="manager.addQuestion()">➕ Adicionar Questão</button>
                     <div class="alinhar3">
@@ -739,6 +744,8 @@
                         <input type="text" id="searchInput" placeholder="🔍 Pesquisar questões..." autocomplete="off">
                         <button id="clearSearch" class="clear-search-btn" style="display: none;">✕</button>
                     </div>
+                    <button id="readQuestionsBtn" onclick="manager.startReading()" title="Ler questões">🔊 Ler
+                        Questões</button>
                     <div class="search-stats" id="searchStats"></div>
                 </div>
                 <div id="questionsList"></div>
@@ -1028,6 +1035,12 @@
                 this.filteredQuestions = [];
                 this.searchTerm = '';
                 this.isLoading = false;
+                //sintesys de voz
+                this.isRecording = false;
+                this.recognition = null;
+                this.isReading = false;
+                this.speechSynthesis = window.speechSynthesis;
+                this.currentReadingIndex = 0;
             }
             normalizeText(text) {
                 return text
@@ -1221,6 +1234,7 @@
                 if (!this.initialized) {
                     this.initializeInfiniteScroll();
                     this.initializeSearch();
+                    this.initializeSpeechRecognition();//inicializa leitura
                     this.initialized = true;
                 }
 
@@ -1513,6 +1527,165 @@ ${question.correctAnswer}`;
                 this.isLoading = false;
                 this.displayQuestionsVirtual();
             }
+            //relacionado a inserçao por voz
+            initializeSpeechRecognition() {
+                if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+                    console.log('Reconhecimento de voz não suportado');
+                    return false;
+                }
+
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                this.recognition = new SpeechRecognition();
+                this.recognition.continuous = false;
+                this.recognition.interimResults = false;
+                this.recognition.lang = 'pt-BR';
+
+                this.recognition.onresult = (event) => {
+                    const transcript = event.results[0][0].transcript;
+                    this.addVoiceText(transcript);
+                };
+
+                this.recognition.onerror = (event) => {
+                    console.error('Erro no reconhecimento:', event.error);
+                    this.isRecording = false;
+                    this.updateMicrophoneButton();
+                };
+
+                this.recognition.onend = () => {
+                    this.isRecording = false;
+                    this.updateMicrophoneButton();
+                };
+
+                return true;
+            }
+            toggleRecording() {
+                if (!this.recognition) {
+                    if (!this.initializeSpeechRecognition()) {
+                        this.system.showNotification('Reconhecimento de voz não suportado neste navegador', 'error');
+                        return;
+                    }
+                }
+
+                if (this.isRecording) {
+                    this.recognition.stop();
+                } else {
+                    this.recognition.start();
+                    this.isRecording = true;
+                    this.updateMicrophoneButton();
+                }
+            }
+
+            addVoiceText(text) {
+                const textarea = document.getElementById('questionInput');
+                const currentValue = textarea.value;
+
+                // Se já tem conteúdo, adicionar em nova linha
+                if (currentValue.trim()) {
+                    textarea.value = currentValue + '\n' + text;
+                } else {
+                    textarea.value = text;
+                }
+
+                // Focar no final do texto
+                textarea.focus();
+                textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+            }
+
+            updateMicrophoneButton() {
+                const micButton = document.getElementById('microphoneBtn');
+                if (micButton) {
+                    if (this.isRecording) {
+                        micButton.innerHTML = '⏹️';
+                        micButton.style.backgroundColor = '#e74c3c';
+                    } else {
+                        micButton.innerHTML = '🎤';
+                        micButton.style.backgroundColor = '';
+                    }
+                }
+            }
+            //relacionados a leitura em voz alta
+            startReading() {
+                if (this.filteredQuestions.length === 0) {
+                    this.system.showNotification('Nenhuma questão para ler', 'error');
+                    return;
+                }
+
+                if (this.isReading) {
+                    this.stopReading();
+                    return;
+                }
+
+                this.isReading = true;
+                this.currentReadingIndex = 0;
+                this.updateReadButton();
+                this.readNextQuestion();
+            }
+
+            readNextQuestion() {
+                if (!this.isReading || this.currentReadingIndex >= this.filteredQuestions.length) {
+                    this.stopReading();
+                    return;
+                }
+
+                const question = this.filteredQuestions[this.currentReadingIndex];
+                const correctIndex = question.correctAnswer - 1;
+                const correctAnswer = question.options[correctIndex];
+
+                // Ler pergunta
+                const questionText = `Pergunta: ${question.text}`;
+                this.speak(questionText, () => {
+                    // Pausa de 2 segundos
+                    setTimeout(() => {
+                        if (this.isReading) {
+                            // Ler resposta correta
+                            const answerText = `Resposta correta: ${correctAnswer}`;
+                            this.speak(answerText, () => {
+                                // Pausa de 1 segundo antes da próxima
+                                setTimeout(() => {
+                                    if (this.isReading) {
+                                        this.currentReadingIndex++;
+                                        this.readNextQuestion();
+                                    }
+                                }, 1000);
+                            });
+                        }
+                    }, 2000);
+                });
+            }
+
+            speak(text, callback) {
+                if (!this.isReading) return;
+
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'pt-BR';
+                utterance.rate = 0.9;
+
+                utterance.onend = () => {
+                    if (callback) callback();
+                };
+
+                this.speechSynthesis.speak(utterance);
+            }
+
+            stopReading() {
+                this.isReading = false;
+                this.speechSynthesis.cancel();
+                this.updateReadButton();
+                this.system.showNotification('Leitura interrompida', 'info');
+            }
+
+            updateReadButton() {
+                const readButton = document.getElementById('readQuestionsBtn');
+                if (readButton) {
+                    if (this.isReading) {
+                        readButton.innerHTML = '⏸️ Pausar Leitura';
+                        readButton.style.backgroundColor = '#e74c3c';
+                    } else {
+                        readButton.innerHTML = '🔊 Ler Questões';
+                        readButton.style.backgroundColor = '';
+                    }
+                }
+            }
         }
 
         // Classe para o Quiz
@@ -1523,9 +1696,13 @@ ${question.correctAnswer}`;
                 this.currentQuestionIndex = 0;
                 this.score = 0;
                 this.selectedAnswer = null;
+                this.currentCategory = null;//rastregar a categoria atual
+                this.wrongQuestions = [];//rastrear perguntas que o usuario errou
             }
 
             start() {
+                this.currentCategory = 'todas';//rastrear e definia a categoria atual
+                this.wrongQuestions = [];//reseta array de perguntas que o usuario errou
                 this.updateQuizCategoryDropdown();
                 if (this.system.questions.length === 0) {
                     this.system.showNotification('Nenhuma questão disponível! Adicione questões primeiro.', 'error');
@@ -1550,6 +1727,8 @@ ${question.correctAnswer}`;
             }
 
             startByCategory(category) {
+                this.currentCategory = category;//salvar a categoria atual
+                this.wrongQuestions = [];//limpando o array das questoes que usuario errou
                 let questionsToUse;
 
                 if (!category || category === 'todas') {
@@ -1647,6 +1826,17 @@ ${question.correctAnswer}`;
                 if (isCorrect) {
                     this.score++;
                     this.updateHeader();
+                } else {
+                    // ← SUBSTITUIR ESTE BLOCO
+                    const currentQuestion = this.quizQuestions[this.currentQuestionIndex];
+
+                    // Verificar se já existe uma questão com o mesmo ID
+                    const alreadyExists = this.wrongQuestions.some(wrongQ => wrongQ.id === currentQuestion.id);
+
+                    // Só adicionar se não existir ainda
+                    if (!alreadyExists) {
+                        this.wrongQuestions.push(currentQuestion);
+                    }
                 }
 
                 document.getElementById('nextBtn').classList.remove('hidden');
@@ -1686,7 +1876,20 @@ ${question.correctAnswer}`;
             }
 
             restart() {
-                this.start();
+                // Se há questões erradas, perguntar se quer revisar apenas elas
+                if (this.wrongQuestions.length > 0) {
+                    if (confirm(`Você errou ${this.wrongQuestions.length} questão(ões). Deseja revisar apenas as questões erradas?`)) {
+                        this.reviewWrongQuestions();
+                        return;
+                    }
+                }
+
+                // Caso contrário, reiniciar normalmente com a categoria atual
+                if (this.currentCategory && this.currentCategory !== 'todas') {
+                    this.startByCategory(this.currentCategory);
+                } else {
+                    this.start();
+                }
             }
 
             backToStart() {
@@ -1699,6 +1902,29 @@ ${question.correctAnswer}`;
                 if (confirm('Tem certeza que deseja finalizar o quiz?')) {
                     this.showResult();
                 }
+            }
+            reviewWrongQuestions() {
+                if (this.wrongQuestions.length === 0) {
+                    this.system.showNotification('Parabéns! Você não errou nenhuma questão!', 'success');
+                    return;
+                }
+
+                // Usar as questões erradas como base do quiz
+                this.quizQuestions = this.system.shuffleArray([...this.wrongQuestions]);
+                this.quizQuestions = this.quizQuestions.map(question => ({
+                    ...question,
+                    options: [...question.options]
+                }));
+
+                this.currentQuestionIndex = 0;
+                this.score = 0;
+                // Não limpar wrongQuestions aqui para permitir múltiplas revisões
+
+                document.getElementById('quiz-result').classList.add('hidden');
+                document.getElementById('quiz-game').classList.remove('hidden');
+
+                this.updateHeader();
+                this.showQuestion();
             }
         }
 
