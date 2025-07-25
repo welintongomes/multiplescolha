@@ -361,11 +361,13 @@
             height: 30px;
             border-radius: 50%;
             transition: all 0.2s ease;
+            box-shadow: none !important; /* <-- ESSA LINHA REMOVE A SOMBRA */
         }
 
         .clear-search-btn:hover {
-            background-color: #f0f0f0;
+            /* background-color: #f0f0f0; */
             color: #333;
+            /*box-shadow: none !important;  <-- ESSA LINHA REMOVE A SOMBRA */
         }
 
         .search-stats {
@@ -472,38 +474,38 @@
         }
 
         .question-category {
-    background: #3498db;
-    color: white;
-    padding: 5px 10px;
-    border-radius: 15px;
-    font-size: 12px;
-    font-weight: bold;
-    display: inline-block;
-    margin-bottom: 10px;
-    cursor: pointer;
-    transition: background-color 0.3s;
-}
+            background: #3498db;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: bold;
+            display: inline-block;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
 
-.question-category:hover {
-    background: #2980b9;
-}
+        .question-category:hover {
+            background: #2980b9;
+        }
 
-/* Estilo para questões sem categoria */
-.question-category.no-category {
-    background: #95a5a6;
-}
+        /* Estilo para questões sem categoria */
+        .question-category.no-category {
+            background: #95a5a6;
+        }
 
-/* Textarea com dica visual */
-#questionInput {
-    font-family: 'Courier New', monospace;
-    line-height: 1.4;
-}
+        /* Textarea com dica visual */
+        #questionInput {
+            font-family: 'Courier New', monospace;
+            line-height: 1.4;
+        }
 
-/* Placeholder melhorado */
-#questionInput::placeholder {
-    color: #7f8c8d;
-    font-style: italic;
-}
+        /* Placeholder melhorado */
+        #questionInput::placeholder {
+            color: #7f8c8d;
+            font-style: italic;
+        }
 
         @keyframes fadeInUp {
             from {
@@ -547,8 +549,8 @@
             }
 
             #searchInput {
+                margin: 1px 24px 1px 11px;
                 font-size: 16px;
-                /* Evita zoom no iOS */
             }
 
             .question-actions {
@@ -565,6 +567,24 @@
                 font-size: 15px;
                 margin: 0px 8px 0px 8px;
                 padding: 1px;
+            }
+
+            .clear-search-btn {
+                position: absolute;
+                right: 28px;
+                background: none;
+                border: none;
+                font-size: 18px;
+                cursor: pointer;
+                color: #999;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 30px;
+                height: 30px;
+                border-radius: 50%;
+                transition: all 0.2s ease;
+                box-shadow: none !important; /* <-- ESSA LINHA REMOVE A SOMBRA */
             }
         }
     </style>
@@ -748,6 +768,11 @@
                     request.onsuccess = () => resolve();
                     request.onerror = () => reject(request.error);
                 });
+                // Atualizar dropdowns após exclusão
+                this.updateCategoryDropdown();
+                if (window.quiz) {
+                    quiz.updateQuizCategoryDropdown();
+                }
             }
         }
         // Classe principal do sistema
@@ -1038,94 +1063,99 @@
             }
 
             parseQuestionText(text) {
-    const lines = text.trim().split('\n').map(line => line.trim()).filter(line => line.length > 0);
+                const lines = text.trim().split('\n').map(line => line.trim()).filter(line => line.length > 0);
 
-    if (lines.length < 4) {
-        throw new Error('Formato inválido. Precisa ter: Categoria, Pergunta, pelo menos uma opção e a resposta correta.');
-    }
+                if (lines.length < 4) {
+                    throw new Error('Formato inválido. Precisa ter: Categoria, Pergunta, pelo menos uma opção e a resposta correta.');
+                }
 
-    const category = lines[0] || 'Sem Categoria'; // Categoria padrão se vazia
-    const question = lines[1];
-    const lastLine = lines[lines.length - 1];
-    const options = lines.slice(2, -1);
+                const category = lines[0] || 'Sem Categoria'; // Categoria padrão se vazia
+                const question = lines[1];
+                const lastLine = lines[lines.length - 1];
+                const options = lines.slice(2, -1);
 
-    // Validação básica
-    if (!question || question.length < 5) {
-        throw new Error('A pergunta deve ter pelo menos 5 caracteres.');
-    }
+                // Validação básica
+                if (!question || question.length < 5) {
+                    throw new Error('A pergunta deve ter pelo menos 5 caracteres.');
+                }
 
-    if (options.length < 2) {
-        throw new Error('Deve haver pelo menos 2 alternativas.');
-    }
+                if (options.length < 2) {
+                    throw new Error('Deve haver pelo menos 2 alternativas.');
+                }
 
-    let correctAnswer;
-    if (isNaN(lastLine)) {
-        const letterToNumber = { 'a': 1, 'b': 2, 'c': 3, 'd': 4, 'e': 5, 'f': 6 };
-        correctAnswer = letterToNumber[lastLine.toLowerCase()] || 1;
-    } else {
-        correctAnswer = parseInt(lastLine);
-    }
+                let correctAnswer;
+                if (isNaN(lastLine)) {
+                    const letterToNumber = { 'a': 1, 'b': 2, 'c': 3, 'd': 4, 'e': 5, 'f': 6 };
+                    correctAnswer = letterToNumber[lastLine.toLowerCase()] || 1;
+                } else {
+                    correctAnswer = parseInt(lastLine);
+                }
 
-    return {
-        category,
-        question,
-        options,
-        correctAnswer: Math.max(1, Math.min(correctAnswer, options.length))
-    };
-}
+                return {
+                    category,
+                    question,
+                    options,
+                    correctAnswer: Math.max(1, Math.min(correctAnswer, options.length))
+                };
+            }
 
             async addQuestion() {
-    const input = document.getElementById('questionInput');
-    const text = input.value.trim();
+                const input = document.getElementById('questionInput');
+                const text = input.value.trim();
 
-    if (!text) {
-        this.system.showNotification('Por favor, insira uma questão.', 'error');
-        return;
-    }
+                if (!text) {
+                    this.system.showNotification('Por favor, insira uma questão.', 'error');
+                    return;
+                }
 
-    try {
-        const parsed = this.parseQuestionText(text);
+                try {
+                    const parsed = this.parseQuestionText(text);
 
-        if (this.system.editingQuestionId) {
-            // Editando questão existente
-            const questionIndex = this.system.questions.findIndex(q => q.id === this.system.editingQuestionId);
-            if (questionIndex !== -1) {
-                // Manter dados originais e atualizar apenas os campos editados
-                this.system.questions[questionIndex] = {
-                    ...this.system.questions[questionIndex], // Manter id, createdAt, isDefault, etc.
-                    category: parsed.category,
-                    text: parsed.question,
-                    options: parsed.options,
-                    correctAnswer: parsed.correctAnswer
-                };
-                this.system.showNotification('Questão atualizada com sucesso!');
+                    if (this.system.editingQuestionId) {
+                        // Editando questão existente
+                        const questionIndex = this.system.questions.findIndex(q => q.id === this.system.editingQuestionId);
+                        if (questionIndex !== -1) {
+                            // Manter dados originais e atualizar apenas os campos editados
+                            this.system.questions[questionIndex] = {
+                                ...this.system.questions[questionIndex], // Manter id, createdAt, isDefault, etc.
+                                category: parsed.category,
+                                text: parsed.question,
+                                options: parsed.options,
+                                correctAnswer: parsed.correctAnswer
+                            };
+                            this.system.showNotification('Questão atualizada com sucesso!');
+                        }
+                        this.system.editingQuestionId = null;
+                    } else {
+                        // Adicionando nova questão
+                        const questionObj = {
+                            id: Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+                            category: parsed.category,
+                            text: parsed.question,
+                            options: parsed.options,
+                            correctAnswer: parsed.correctAnswer,
+                            createdAt: new Date().toISOString(),
+                            isDefault: false
+                        };
+                        this.system.questions.push(questionObj);
+                        this.system.showNotification('Questão adicionada com sucesso!');
+                    }
+
+                    await this.system.saveQuestions();
+                    input.value = '';
+                    this.resetAddButton();
+                    // Atualizar lista filtrada e reexibir
+                    this.filterQuestions();
+                    // Atualizar dropdowns em tempo real
+                    this.updateCategoryDropdown();
+                    if (window.quiz) {
+                        quiz.updateQuizCategoryDropdown();
+                    }
+
+                } catch (error) {
+                    this.system.showNotification('Erro: ' + error.message, 'error');
+                }
             }
-            this.system.editingQuestionId = null;
-        } else {
-            // Adicionando nova questão
-            const questionObj = {
-                id: Date.now() + '_' + Math.random().toString(36).substr(2, 9),
-                category: parsed.category,
-                text: parsed.question,
-                options: parsed.options,
-                correctAnswer: parsed.correctAnswer,
-                createdAt: new Date().toISOString(),
-                isDefault: false
-            };
-            this.system.questions.push(questionObj);
-            this.system.showNotification('Questão adicionada com sucesso!');
-        }
-
-        await this.system.saveQuestions();
-        input.value = '';
-        this.resetAddButton();
-        // Atualizar lista filtrada e reexibir
-        this.filterQuestions();
-
-    } catch (error) {
-        this.system.showNotification('Erro: ' + error.message, 'error');
-    }
-}
 
             resetAddButton() {
                 const addButton = document.querySelector('button[onclick="manager.addQuestion()"]');
@@ -1149,6 +1179,7 @@
 
                 this.updateSearchStats();
                 this.updateCategoryDropdown();
+                quiz.updateQuizCategoryDropdown();
             }
             getCategories() {
                 const categories = [...new Set(this.system.questions.map(q => q.category))];
@@ -1190,31 +1221,31 @@
                 this.filterQuestions();
                 this.system.showNotification('Questão excluída com sucesso!');
             }
-editQuestion(id) {
-    const question = this.system.questions.find(q => q.id == id || q.id === id);
-    if (!question) return;
+            editQuestion(id) {
+                const question = this.system.questions.find(q => q.id == id || q.id === id);
+                if (!question) return;
 
-    // Marcar que está editando
-    this.system.editingQuestionId = id;
+                // Marcar que está editando
+                this.system.editingQuestionId = id;
 
-    // NOVA FORMATAÇÃO: Incluir categoria na primeira linha
-    const questionText = `${question.category || 'Sem Categoria'}
+                // NOVA FORMATAÇÃO: Incluir categoria na primeira linha
+                const questionText = `${question.category || 'Sem Categoria'}
 ${question.text}
 ${question.options.join('\n')}
 ${question.correctAnswer}`;
 
-    document.getElementById('questionInput').value = questionText;
+                document.getElementById('questionInput').value = questionText;
 
-    // Mudar texto do botão para indicar edição
-    const addButton = document.querySelector('button[onclick="manager.addQuestion()"]');
-    if (addButton) {
-        addButton.textContent = '✏️ Atualizar Questão';
-        addButton.style.backgroundColor = '#f39c12';
-    }
+                // Mudar texto do botão para indicar edição
+                const addButton = document.querySelector('button[onclick="manager.addQuestion()"]');
+                if (addButton) {
+                    addButton.textContent = '✏️ Atualizar Questão';
+                    addButton.style.backgroundColor = '#f39c12';
+                }
 
-    // Mostrar notificação explicativa
-    this.system.showNotification('Questão carregada para edição! Você pode editar a categoria, pergunta, alternativas e resposta. Clique em "Atualizar Questão" para salvar.', 'info');
-}
+                // Mostrar notificação explicativa
+                this.system.showNotification('Questão carregada para edição! Você pode editar a categoria, pergunta, alternativas e resposta. Clique em "Atualizar Questão" para salvar.', 'info');
+            }
 
             async clearAllQuestions() {
                 if (!confirm('Tem certeza que deseja excluir TODAS as questões?')) return;
@@ -1263,16 +1294,31 @@ ${question.correctAnswer}`;
                         }
 
                         importedQuestions.forEach(question => {
-                            this.system.questions.push({
+                            // CORREÇÃO: Garantir que toda questão importada tenha categoria
+                            const processedQuestion = {
                                 ...question,
                                 id: Date.now() + '_' + Math.random().toString(36).substr(2, 9),
-                                isDefault: false // Garantir que questões importadas não sejam marcadas como padrão
-                            });
+                                category: question.category || 'Importadas', // ✅ Categoria padrão para questões sem categoria
+                                isDefault: false
+                            };
+
+                            this.system.questions.push(processedQuestion);
                         });
 
-                        this.system.saveQuestions();
-                        this.displayQuestions();
-                        this.system.showNotification(`${importedQuestions.length} questões importadas com sucesso!`);
+                        // ✅ CORREÇÃO: Salvar e atualizar interface em tempo real
+                        this.system.saveQuestions().then(() => {
+                            this.displayQuestions(); // Atualizar lista
+                            this.updateCategoryDropdown(); // Atualizar dropdown da lista
+
+
+                            // ✅ Atualizar dropdown do quiz também
+                            if (window.quiz) {
+                                quiz.updateQuizCategoryDropdown();
+                            }
+
+                            this.system.showNotification(`${importedQuestions.length} questões importadas com sucesso!`);
+                        });
+
                     } catch (error) {
                         this.system.showNotification('Erro ao importar: ' + error.message, 'error');
                     }
@@ -1285,56 +1331,56 @@ ${question.correctAnswer}`;
                 document.getElementById('questionInput').value = '';
             }
             displayQuestionsVirtual() {
-    const container = document.getElementById('questionsList');
-    
-    // Inverter a ordem das perguntas
-    const reversedQuestions = [...this.filteredQuestions].reverse(); // <- aqui inverte
+                const container = document.getElementById('questionsList');
 
-    const startIndex = this.currentPage * this.itemsPerPage;
-    const endIndex = Math.min(startIndex + this.itemsPerPage, reversedQuestions.length);
+                // Inverter a ordem das perguntas
+                const reversedQuestions = [...this.filteredQuestions].reverse(); // <- aqui inverte
 
-    // Se é a primeira página, limpar container
-    if (this.currentPage === 0) {
-        container.innerHTML = '';
-    }
+                const startIndex = this.currentPage * this.itemsPerPage;
+                const endIndex = Math.min(startIndex + this.itemsPerPage, reversedQuestions.length);
 
-    // Mostrar indicador de carregamento
-    if (this.isLoading) {
-        const loadingDiv = document.createElement('div');
-        loadingDiv.className = 'loading-indicator';
-        loadingDiv.innerHTML = '⏳ Carregando mais questões...';
-        container.appendChild(loadingDiv);
-        return;
-    }
+                // Se é a primeira página, limpar container
+                if (this.currentPage === 0) {
+                    container.innerHTML = '';
+                }
 
-    // Adicionar questões da página atual
-    for (let i = startIndex; i < endIndex; i++) {
-        const question = reversedQuestions[i];
-        const questionDiv = document.createElement('div');
-        questionDiv.className = 'question-item';
-        questionDiv.setAttribute('data-question-id', question.id);
-        questionDiv.innerHTML = `
+                // Mostrar indicador de carregamento
+                if (this.isLoading) {
+                    const loadingDiv = document.createElement('div');
+                    loadingDiv.className = 'loading-indicator';
+                    loadingDiv.innerHTML = '⏳ Carregando mais questões...';
+                    container.appendChild(loadingDiv);
+                    return;
+                }
+
+                // Adicionar questões da página atual
+                for (let i = startIndex; i < endIndex; i++) {
+                    const question = reversedQuestions[i];
+                    const questionDiv = document.createElement('div');
+                    questionDiv.className = 'question-item';
+                    questionDiv.setAttribute('data-question-id', question.id);
+                    questionDiv.innerHTML = `
             <div class="question-category">📁 ${question.category}</div>
             <div class="question-text">${this.highlightSearchTerm(question.text)}</div>
             <ul class="options">
                 ${question.options.map((option, index) =>
-                    `<li class="${index + 1 === question.correctAnswer ? 'correct' : ''}">
+                        `<li class="${index + 1 === question.correctAnswer ? 'correct' : ''}">
                         ${String.fromCharCode(65 + index)}. ${this.highlightSearchTerm(option)}
                         ${index + 1 === question.correctAnswer ? ' ✓' : ''}
                     </li>`
-                ).join('')}
+                    ).join('')}
             </ul>
             <div class="question-actions">
                 <button class="btn-edit" onclick="manager.editQuestion(\`${question.id}\`)">✏️ Editar</button>
                 <button class="btn-danger" onclick="manager.deleteQuestion(\`${question.id}\`)">🗑️ Excluir</button>
             </div>
         `;
-        container.appendChild(questionDiv);
-    }
+                    container.appendChild(questionDiv);
+                }
 
-    // Mostrar indicador se há mais questões
-    this.updateLoadMoreIndicator();
-}
+                // Mostrar indicador se há mais questões
+                this.updateLoadMoreIndicator();
+            }
 
 
             highlightSearchTerm(text) {
