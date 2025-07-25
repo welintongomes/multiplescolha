@@ -183,7 +183,7 @@
 
         textarea {
             width: 100%;
-            min-height: 200px;
+            min-height: 110px;
             padding: 20px;
             border: 2px solid #e0e0e0;
             border-radius: 15px;
@@ -315,6 +315,13 @@
             margin-right: 5px;
         }
 
+        .btn-collapse {
+            margin-top: 12px;
+            background-color: #f39c12;
+            margin-right: 5px;
+        }
+
+
         .btn-edit:hover {
             background-color: #d68910;
         }
@@ -361,7 +368,8 @@
             height: 30px;
             border-radius: 50%;
             transition: all 0.2s ease;
-            box-shadow: none !important; /* <-- ESSA LINHA REMOVE A SOMBRA */
+            box-shadow: none !important;
+            /* <-- ESSA LINHA REMOVE A SOMBRA */
         }
 
         .clear-search-btn:hover {
@@ -453,6 +461,7 @@
         }
 
         .filter-section {
+            text-align: center;
             background: #f8f9fa;
             padding: 15px;
             border-radius: 8px;
@@ -507,6 +516,43 @@
             font-style: italic;
         }
 
+        .correct {
+            font-weight: bold;
+            color: green;
+        }
+
+        .show-all-btn,
+        .btn-collapse {
+            color: #4d46f2;
+            margin-top: 12px;
+            cursor: pointer;
+            background-color: #f0f0f0;
+            /* border: none; */
+            /* padding: 6px 10px; */
+            /* border-radius: 4px; */
+            border-radius: 25px;
+        }
+
+        .question-item {
+            border: 1px solid #ddd;
+            padding: 12px;
+            margin-bottom: 12px;
+            border-radius: 6px;
+            background-color: #fff;
+        }
+
+        .question-category {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 6px;
+        }
+
+        .question-actions {
+            margin-top: 12px;
+            display: flex;
+            gap: 10px;
+        }
+
         @keyframes fadeInUp {
             from {
                 opacity: 0;
@@ -528,9 +574,9 @@
                 font-size: 2em;
             }
 
-            .tabs {
+            /* .tabs {
                 flex-direction: column;
-            }
+            } */
 
             .buttons {
                 flex-direction: column;
@@ -584,7 +630,8 @@
                 height: 30px;
                 border-radius: 50%;
                 transition: all 0.2s ease;
-                box-shadow: none !important; /* <-- ESSA LINHA REMOVE A SOMBRA */
+                box-shadow: none !important;
+                /* <-- ESSA LINHA REMOVE A SOMBRA */
             }
         }
     </style>
@@ -599,7 +646,7 @@
 
         <div class="tabs">
             <button class="tab active" data-tab="quiz">🎮 Quiz</button>
-            <button class="tab" data-tab="manage">📝 Gerenciar Questões</button>
+            <button class="tab" data-tab="manage">📝 Gerenciar</button>
         </div>
 
         <!-- Aba do Quiz -->
@@ -1234,6 +1281,11 @@ ${question.text}
 ${question.options.join('\n')}
 ${question.correctAnswer}`;
 
+                const textarea = document.getElementById('questionInput');
+                textarea.value = questionText;
+                textarea.focus();
+                textarea.setSelectionRange(0, 0); // <-- Cursor no início
+
                 document.getElementById('questionInput').value = questionText;
 
                 // Mudar texto do botão para indicar edição
@@ -1330,21 +1382,18 @@ ${question.correctAnswer}`;
             clearInput() {
                 document.getElementById('questionInput').value = '';
             }
+
             displayQuestionsVirtual() {
                 const container = document.getElementById('questionsList');
 
-                // Inverter a ordem das perguntas
-                const reversedQuestions = [...this.filteredQuestions].reverse(); // <- aqui inverte
-
+                const reversedQuestions = [...this.filteredQuestions].reverse();
                 const startIndex = this.currentPage * this.itemsPerPage;
                 const endIndex = Math.min(startIndex + this.itemsPerPage, reversedQuestions.length);
 
-                // Se é a primeira página, limpar container
                 if (this.currentPage === 0) {
                     container.innerHTML = '';
                 }
 
-                // Mostrar indicador de carregamento
                 if (this.isLoading) {
                     const loadingDiv = document.createElement('div');
                     loadingDiv.className = 'loading-indicator';
@@ -1353,32 +1402,52 @@ ${question.correctAnswer}`;
                     return;
                 }
 
-                // Adicionar questões da página atual
                 for (let i = startIndex; i < endIndex; i++) {
                     const question = reversedQuestions[i];
+                    const correctIndex = question.correctAnswer - 1;
+
                     const questionDiv = document.createElement('div');
                     questionDiv.className = 'question-item';
                     questionDiv.setAttribute('data-question-id', question.id);
-                    questionDiv.innerHTML = `
-            <div class="question-category">📁 ${question.category}</div>
-            <div class="question-text">${this.highlightSearchTerm(question.text)}</div>
-            <ul class="options">
-                ${question.options.map((option, index) =>
-                        `<li class="${index + 1 === question.correctAnswer ? 'correct' : ''}">
-                        ${String.fromCharCode(65 + index)}. ${this.highlightSearchTerm(option)}
-                        ${index + 1 === question.correctAnswer ? ' ✓' : ''}
-                    </li>`
-                    ).join('')}
-            </ul>
-            <div class="question-actions">
-                <button class="btn-edit" onclick="manager.editQuestion(\`${question.id}\`)">✏️ Editar</button>
-                <button class="btn-danger" onclick="manager.deleteQuestion(\`${question.id}\`)">🗑️ Excluir</button>
+
+                    // Bloco resumido (shortContent)
+                    const shortContent = `
+            <div class="question-short">
+                <div class="question-text">${this.highlightSearchTerm(question.text)}</div>
+                <ul class="options">
+                    <li class="correct">
+                        ${String.fromCharCode(65 + correctIndex)}. ${this.highlightSearchTerm(question.options[correctIndex])} ✓
+                    </li>
+                </ul>
+                <button class="show-all-btn" onclick="toggleQuestionContent(this)">Mostrar tudo</button>
             </div>
         `;
+
+                    // Bloco completo (fullContent), inicialmente oculto
+                    const fullContent = `
+            <div class="question-full" style="display: none;">
+                <div class="question-category">📁 ${question.category}</div>
+                <div class="question-text">${this.highlightSearchTerm(question.text)}</div>
+                <ul class="options">
+                    ${question.options.map((option, index) =>
+                        `<li class="${index + 1 === question.correctAnswer ? 'correct' : ''}">
+                            ${String.fromCharCode(65 + index)}. ${this.highlightSearchTerm(option)}
+                            ${index + 1 === question.correctAnswer ? ' ✓' : ''}
+                        </li>`).join('')}
+                </ul>
+                <div class="question-actions">
+                    <button class="btn-edit" onclick="manager.editQuestion('${question.id}')">✏️ Editar</button>
+                    <button class="btn-danger" onclick="manager.deleteQuestion('${question.id}')">🗑️ Excluir</button>
+                    <button class="btn-collapse" onclick="toggleQuestionContent(this)">🔽 Recolher</button>
+                </div>
+            </div>
+        `;
+
+                    questionDiv.innerHTML = shortContent + fullContent;
+
                     container.appendChild(questionDiv);
                 }
 
-                // Mostrar indicador se há mais questões
                 this.updateLoadMoreIndicator();
             }
 
@@ -1633,6 +1702,23 @@ ${question.correctAnswer}`;
             }
         }
 
+        function toggleQuestionContent(button) {
+            const questionItem = button.closest('.question-item');
+            const shortDiv = questionItem.querySelector('.question-short');
+            const fullDiv = questionItem.querySelector('.question-full');
+
+            const isExpanding = button.classList.contains('show-all-btn');
+
+            if (isExpanding) {
+                shortDiv.style.display = 'none';
+                fullDiv.style.display = 'block';
+            } else {
+                fullDiv.style.display = 'none';
+                shortDiv.style.display = 'block';
+            }
+        }
+
+
         // Inicializar o sistema
         const system = new QuizSystem();
         const manager = new QuestionManager(system);
@@ -1648,6 +1734,7 @@ ${question.correctAnswer}`;
                 quiz.updateQuizCategoryDropdown();
             }
         }, 1000);
+
     </script>
 </body>
 
