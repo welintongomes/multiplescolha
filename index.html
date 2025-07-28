@@ -1099,12 +1099,12 @@
                 const options = lines.slice(2, -1);
 
                 // Validação básica
-                if (!question || question.length < 5) {
-                    throw new Error('A pergunta deve ter pelo menos 5 caracteres.');
+                if (!question || question.length < 3) {
+                    throw new Error('A pergunta deve ter pelo menos 3 caracteres.');
                 }
 
-                if (options.length < 2) {
-                    throw new Error('Deve haver pelo menos 2 alternativas.');
+                if (options.length < 1) {
+                    throw new Error('Deve haver pelo menos 1 alternativas.');
                 }
 
                 let correctAnswer;
